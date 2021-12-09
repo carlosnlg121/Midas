@@ -1,12 +1,11 @@
 package com.controlemidias.Midias.services.Impl;
 
 import java.text.SimpleDateFormat;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.SimpleTimeZone;
+import java.util.*;
 
 import com.controlemidias.Midias.domain.*;
+import com.controlemidias.Midias.domain.Dto.EList.Lista;
+import com.controlemidias.Midias.domain.Dto.btn.Button;
 import com.controlemidias.Midias.services.ZapService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,13 +43,47 @@ public class WebhookServiceImpl implements WebhookService {
         Webhook web = new Webhook();
         JSONObject root = new JSONObject(user);
         web.setBody(root.getString("body"));
-        web.setDe(retirar(root.getString("from")));
-        web.setPara(retirar(root.getString("to")));
-        web.setId(root.getString("id"));
-        web.setRepondido("N");
-        Buscarmensagem(web);
+        web.setPara(root.getString("to"));
+        bot(web);
         webrepository.Salvar(web);
         return web;
+    }
+
+
+    public List<com.controlemidias.Midias.domain.Dto.EList.List> opcao() {
+        List<com.controlemidias.Midias.domain.Dto.EList.List> l = new ArrayList<>();
+
+        com.controlemidias.Midias.domain.Dto.EList.List Agendamento = new com.controlemidias.Midias.domain.Dto.EList.List();
+        Agendamento.setTitle("Agendamento");
+        l.add(Agendamento);
+
+        com.controlemidias.Midias.domain.Dto.EList.List Resultados = new com.controlemidias.Midias.domain.Dto.EList.List();
+        Resultados.setTitle("Resultados");
+        l.add(Resultados);
+
+        com.controlemidias.Midias.domain.Dto.EList.List reclamacao = new com.controlemidias.Midias.domain.Dto.EList.List();
+        reclamacao.setTitle("Registrar reclamacao");
+        l.add(reclamacao);
+
+        com.controlemidias.Midias.domain.Dto.EList.List Atendente = new com.controlemidias.Midias.domain.Dto.EList.List();
+        Atendente.setTitle("Falar com um Atendente");
+        l.add(Atendente);
+
+        return l;
+
+    }
+
+    public Lista Default() {
+        Lista lista = new Lista();
+
+        lista.setTitle("Seja bem vindo!");
+        lista.setBtnText("Escolher uma opcao");
+        lista.setList_body("Nosso sistema esta a sua disposicao");
+        lista.setFooter("Obridado!");
+        lista.setList(opcao());
+
+
+        return lista;
     }
 
     @Override
@@ -63,18 +96,40 @@ public class WebhookServiceImpl implements WebhookService {
         return dado.substring(0, pos);
     }
 
+
+    public Boolean bot(Webhook web) {
+
+        try {
+            UtimaPergunta p = buscarUltimaP(web.getPara());
+            Lista lista = new Lista();
+            if (Objects.isNull(p)) {
+                lista = Default();
+                lista.setNumber(web.getPara());
+                zapServicel.EnviarList(lista);
+
+            }
+
+        } catch (Exception e) {
+
+        }
+
+        return true;
+
+    }
+
+
     public Boolean Buscarmensagem(Webhook web) {
         Cadastro cadastro = buscarCadastro(web.getPara());
         UtimaPergunta pegunta = buscarUltimaP(web.getDe());
         if (Objects.nonNull(pegunta)) {
             if (pegunta.isAgenda()) {
-                if (Objects.isNull(pegunta.getReg())){
-                   Agendar(web,pegunta);
-                }else if (pegunta.getReg().equals("Agenda")){
-                    Horario(web,pegunta);
+                if (Objects.isNull(pegunta.getReg())) {
+                    Agendar(web, pegunta);
+                } else if (pegunta.getReg().equals("Agenda")) {
+                    Horario(web, pegunta);
 
-                }else{
-                    Fechar(web,pegunta);
+                } else {
+                    Fechar(web, pegunta);
                 }
             } else {
                 Resposta r = buscarResp(web.getBody(), cadastro.getId_tipodash());
@@ -127,7 +182,17 @@ public class WebhookServiceImpl implements WebhookService {
 
     }
 
-    public void Agendar(Webhook w,UtimaPergunta u){
+    @Override
+    public String enviobuton(Button button) {
+        return zapServicel.Enviarbuton(button);
+    }
+
+    @Override
+    public String envioList(com.controlemidias.Midias.domain.Dto.EList.Lista l) {
+        return zapServicel.EnviarList(l);
+    }
+
+    public void Agendar(Webhook w, UtimaPergunta u) {
         List<Agenda> ag = AgendaLivre(w.getBody());
         LimparPerguntas(w.getDe());
         UtimaPergunta ult = new UtimaPergunta();
@@ -139,17 +204,17 @@ public class WebhookServiceImpl implements WebhookService {
         ultimaPerguntaRepository.Salvar(ult);
 
         String texto = "";
-         if(!ag.isEmpty()) {
-             texto = "Informe apenas o *numero* desejado\n";
-             SimpleDateFormat sdff = new SimpleDateFormat("dd/MM/yyyy");
-             for (Agenda a : ag) {
-                 texto = texto + "*" + a.getId() + "* - " + sdff.format(a.getAgenda()) + "\n";
-             }
-         }else{
-             zapServicel.EnviarSMS("*Medico com agenda fechada*, \n selecione outro medico", w.getPara(), w.getDe());
-             LimparPerguntas(w.getDe());
-             return;
-         }
+        if (!ag.isEmpty()) {
+            texto = "Informe apenas o *numero* desejado\n";
+            SimpleDateFormat sdff = new SimpleDateFormat("dd/MM/yyyy");
+            for (Agenda a : ag) {
+                texto = texto + "*" + a.getId() + "* - " + sdff.format(a.getAgenda()) + "\n";
+            }
+        } else {
+            zapServicel.EnviarSMS("*Medico com agenda fechada*, \n selecione outro medico", w.getPara(), w.getDe());
+            LimparPerguntas(w.getDe());
+            return;
+        }
 
         zapServicel.EnviarSMS(texto, w.getPara(), w.getDe());
         Atendimento atend = new Atendimento();
@@ -161,11 +226,12 @@ public class WebhookServiceImpl implements WebhookService {
             Atendimento at = atendimentoRepository.agendado(w.getDe());
             horaRepository.UpdateAtiva(at.getId_hora());
             atendimentoRepository.deleteById(w.getDe());
-        }catch (Exception e){}
+        } catch (Exception e) {
+        }
         atendimentoRepository.Salvar(atend);
     }
 
-    public void Horario(Webhook w,UtimaPergunta u){
+    public void Horario(Webhook w, UtimaPergunta u) {
         List<Hora> hr = HoraDisp(Long.valueOf(w.getBody()));
         LimparPerguntas(w.getDe());
         UtimaPergunta ult = new UtimaPergunta();
@@ -177,29 +243,29 @@ public class WebhookServiceImpl implements WebhookService {
         ultimaPerguntaRepository.Salvar(ult);
 
         String texto = "";
-        if(!hr.isEmpty()) {
+        if (!hr.isEmpty()) {
             texto = "Informe apenas o *numero* desejado\n";
             for (Hora h : hr) {
                 texto = texto + "*" + h.getId() + "* - " + h.getHora() + "\n";
             }
-        }else{
+        } else {
             zapServicel.EnviarSMS("*Medico com agenda fechada*, \n selecione outro medico", w.getPara(), w.getDe());
             LimparPerguntas(w.getDe());
             return;
         }
         zapServicel.EnviarSMS(texto, w.getPara(), w.getDe());
-        atendimentoRepository.UpdateAgenda(Long.valueOf(w.getBody()),w.getDe());
+        atendimentoRepository.UpdateAgenda(Long.valueOf(w.getBody()), w.getDe());
     }
 
-    public void Fechar(Webhook w,UtimaPergunta u){
+    public void Fechar(Webhook w, UtimaPergunta u) {
         LimparPerguntas(w.getDe());
         SimpleDateFormat sdff = new SimpleDateFormat("dd/MM/yyyy");
-        atendimentoRepository.UpdateHora(Long.valueOf(w.getBody()),w.getDe());
+        atendimentoRepository.UpdateHora(Long.valueOf(w.getBody()), w.getDe());
         horaRepository.Update(Long.valueOf(w.getBody()));
         Atendimento at = atendimentoRepository.agendado(w.getDe());
         Hora h = horaRepository.agendado(Long.valueOf(w.getBody()));
         Agenda a = agendaRepository.agendado(at.getId_agenda());
-        zapServicel.EnviarSMS("Estamos te aguardando \n No dia " +sdff.format(a.getAgenda())+" horario " +h.getHora() , w.getPara(), w.getDe());
+        zapServicel.EnviarSMS("Estamos te aguardando \n No dia " + sdff.format(a.getAgenda()) + " horario " + h.getHora(), w.getPara(), w.getDe());
     }
 
     public void gravarUtimaPergunta(Resposta r, Webhook web) {
@@ -267,6 +333,7 @@ public class WebhookServiceImpl implements WebhookService {
         }
         return resp;
     }
+
     public Resposta buscarRespFinal(Long idperg, Long id) {
         Resposta resp = null;
         try {
@@ -277,7 +344,7 @@ public class WebhookServiceImpl implements WebhookService {
     }
 
     public List<Agenda> AgendaLivre(String id) {
-        List<Agenda>  resp = null;
+        List<Agenda> resp = null;
         try {
             resp = agendaRepository.ListarDataDispoinivel(id);
         } catch (Exception e) {
@@ -286,7 +353,7 @@ public class WebhookServiceImpl implements WebhookService {
     }
 
     public List<Hora> HoraDisp(Long id) {
-        List<Hora>  resp = null;
+        List<Hora> resp = null;
         try {
             resp = horaRepository.ListarDataDispoinivel(id);
         } catch (Exception e) {

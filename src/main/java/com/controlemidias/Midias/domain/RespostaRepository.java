@@ -44,4 +44,16 @@ public class RespostaRepository  {
         }
     }
 
+
+    public Resposta buscarResposta(String texto){
+
+        try {
+            Resposta resposta = db.queryForObject("select * from resposta where id_pergunta = ?  and id_dash = ?",
+                    BeanPropertyRowMapper.newInstance(Resposta.class), texto);
+            return resposta;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            return null;
+        }
+    }
+
 }
