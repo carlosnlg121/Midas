@@ -1,5 +1,6 @@
 package com.controlemidias.Midias.services.Impl;
 
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -36,6 +37,8 @@ public class WebhookServiceImpl implements WebhookService {
     HoraRepository horaRepository;
     @Autowired
     AtendimentoRepository atendimentoRepository;
+    @Autowired
+    MedicoRepository medicoRepository;
 
 
     @Override
@@ -73,12 +76,85 @@ public class WebhookServiceImpl implements WebhookService {
 
     }
 
+    public List<com.controlemidias.Midias.domain.Dto.EList.List> ListaMedico() {
+        List<com.controlemidias.Midias.domain.Dto.EList.List> l = new ArrayList<>();
+
+        List<Medico> medico = medicoRepository.Listar();
+        for (Medico m : medico) {
+            com.controlemidias.Midias.domain.Dto.EList.List md = new com.controlemidias.Midias.domain.Dto.EList.List();
+            md.setTitle(m.getMedico());
+            l.add(md);
+        }
+        return l;
+
+    }
+
+    public List<com.controlemidias.Midias.domain.Dto.EList.List> ListaAgenda(String id) {
+        List<com.controlemidias.Midias.domain.Dto.EList.List> l = new ArrayList<>();
+        List<Agenda> Agenda = agendaRepository.ListarDataDispoinivel(id);
+        SimpleDateFormat sdff = new SimpleDateFormat("dd/MM/yyyy");
+        for (Agenda m : Agenda) {
+            com.controlemidias.Midias.domain.Dto.EList.List md = new com.controlemidias.Midias.domain.Dto.EList.List();
+            md.setTitle(sdff.format(m.getAgenda()));
+            l.add(md);
+        }
+        return l;
+
+    }
+
+    public List<com.controlemidias.Midias.domain.Dto.EList.List> ListaHora(Long id) {
+        List<com.controlemidias.Midias.domain.Dto.EList.List> l = new ArrayList<>();
+        List<Hora> Agenda = horaRepository.ListarDataDispoinivel(id);
+        for (Hora m : Agenda) {
+            com.controlemidias.Midias.domain.Dto.EList.List md = new com.controlemidias.Midias.domain.Dto.EList.List();
+            md.setTitle(m.getHora());
+            l.add(md);
+        }
+        return l;
+
+    }
+
+    public Lista Medico() {
+        Lista lista = new Lista();
+        lista.setTitle("Medico");
+        lista.setBtnText("Escolher uma opcao");
+        lista.setList_body("Selecione o medico \n");
+        lista.setFooter("Obridado!");
+        lista.setList(ListaMedico());
+        return lista;
+    }
+
+    public Lista Agenda(Long Id) {
+        Lista lista = new Lista();
+        lista.setTitle("Agenda");
+        lista.setBtnText("Escolher uma opcao");
+        lista.setList_body("Selecione o seu dia! \n");
+        lista.setFooter("Obridado!");
+        lista.setList(ListaAgenda(String.valueOf(Id)));
+        return lista;
+    }
+
+    public Lista Hora(Long Id) {
+        Lista lista = new Lista();
+        lista.setTitle("Hora");
+        lista.setBtnText("Escolher uma opcao");
+        lista.setList_body("Selecione o seu horario! \n");
+        lista.setFooter("Obridado!");
+        lista.setList(ListaHora(Id));
+        return lista;
+    }
+
     public Lista Default() {
         Lista lista = new Lista();
 
         lista.setTitle("Seja bem vindo!");
         lista.setBtnText("Escolher uma opcao");
-        lista.setList_body("Nosso sistema esta a sua disposicao");
+        lista.setList_body("Ola tudo bem, Esse e nosso bot Teste, \n" +
+                "nosso horario de funcionamento e \n" +
+                "de *segunda-feira a sexta-feira*,\n" +
+                "das *8:00 as 18:00*,\n" +
+                "Exames nao tem a necessidade de agendar,\n" +
+                "estamos te aguardando.");
         lista.setFooter("Obridado!");
         lista.setList(opcao());
 
@@ -105,8 +181,90 @@ public class WebhookServiceImpl implements WebhookService {
             if (Objects.isNull(p)) {
                 lista = Default();
                 lista.setNumber(web.getPara());
-                zapServicel.EnviarList(lista);
+                gravarUtimaPergunta(web, "Default", lista);
 
+            } else if (web.getBody().equals("Agendamento")) {
+                lista = Medico();
+                lista.setNumber(web.getPara());
+                gravarUtimaPergunta(web, "Medico", lista);
+
+            } else if (web.getBody().equals("Resultados")) {
+                zapServicel.EnviarSMS("Descreva o ocorrido para tomar a devida providência\n" +
+                        "desculpe o transtorno. \n", web.getPara(), web.getPara());
+                gravarUtimaPerguntaSemEnvio(web, "RESULTADO");
+
+            } else if (web.getBody().equals("Registrar reclamacao")) {
+                zapServicel.EnviarSMS("Descreva o ocorrido para tomar a devida providência\n" +
+                        "desculpe o transtorno. \n", web.getPara(), web.getPara());
+                gravarUtimaPerguntaSemEnvio(web, "SAQ");
+
+            } else if (web.getBody().equals("Falar com um Atendente")) {
+                zapServicel.EnviarSMS("Em desenvolvimento\n" +
+                        "desculpe o transtorno. \n", web.getPara(), web.getPara());
+                LimparPerguntas(web.getPara());
+            } else if (p.getPergunta().equals("Hora")) {
+
+                Atendimento at = atendimentoRepository.agendadoHora(web.getPara());
+                Hora m = horaRepository.dia(String.valueOf(at.getId_agenda()), web.getBody());
+                LimparPerguntas(web.getPara());
+                horaRepository.Update(m.getId());
+                atendimentoRepository.UpdateHora(m.getId(),at.getId());
+
+                Enviaragendamento(web);
+
+
+            } else if (p.getPergunta().equals("Agenda")) {
+                Atendimento at = atendimentoRepository.agendadoagenda(web.getPara());
+                //Agenda m = agendaRepository.dia(String.valueOf(at.getId_medico()), sdff.format(web.getBody()));
+                Agenda m = AcharAgenda(at.getId_medico(), web.getBody());
+                lista = Hora(m.getId());
+                lista.setNumber(web.getPara());
+                gravarUtimaPergunta(web, "Hora", lista);
+                atendimentoRepository.UpdateAgenda(m.getId(),at.getId());
+
+            } else if (p.getPergunta().equals("Medico")) {
+                Medico m = medicoRepository.Medico(web.getBody());
+
+                List<Agenda> a = AgendaLivre(String.valueOf(m.getId()));
+                if (a.size() >0){
+                    lista = Agenda(m.getId());
+                    lista.setNumber(web.getPara());
+                    gravarUtimaPergunta(web, "Agenda", lista);
+                    Atendimento atend = new Atendimento();
+
+                    atend.setId_medico(m.getId());
+                    atend.setNumero(web.getPara());
+                    atend.setNumerocliente(web.getPara());
+                    atendimentoRepository.Salvar(atend);
+                }else{
+                    zapServicel.EnviarSMS("Medico Selecionado : *"+web.getBody()+"*\n" +
+                            "*Sem agenda disponivel*", web.getPara(), web.getPara());
+                    LimparPerguntas(web.getPara());
+                }
+
+            } else if (p.getPergunta().equals("SAQ")) {
+                Saq saq = new Saq();
+                saq.setMenssage(web.getBody());
+                saq.setNumero(web.getPara());
+                saq.setNumeroenviado(web.getPara());
+                saqRepository.Salvar(saq);
+                LimparPerguntas(web.getPara());
+                zapServicel.EnviarSMS("Obrigado e disponha.", web.getPara(), web.getPara());
+
+            } else if (p.getPergunta().equals("RESULTADO")) {
+                Resultado re = new Resultado();
+                re.setMenssage(web.getBody());
+                re.setNumero(web.getPara());
+                re.setNumeroenviado(web.getPara());
+                resultadoRepository.Salvar(re);
+                LimparPerguntas(web.getPara());
+                zapServicel.EnviarSMS("Obrigado e disponha.", web.getPara(), web.getPara());
+            } else {
+                zapServicel.EnviarSMS("Ops! *opção invalida.* \n" +
+                        "Vamos recomecar!", web.getPara(), web.getPara());
+                lista = Default();
+                lista.setNumber(web.getPara());
+                gravarUtimaPergunta(web, "Default", lista);
             }
 
         } catch (Exception e) {
@@ -115,6 +273,54 @@ public class WebhookServiceImpl implements WebhookService {
 
         return true;
 
+    }
+
+    public Agenda AcharAgenda(Long id, String data){
+        Agenda ag = new Agenda();
+        List<Agenda> a = AgendaLivre(String.valueOf(id));
+        SimpleDateFormat f = new SimpleDateFormat("dd/MM/yyyy");
+        for (Agenda t:a){
+            if (data.equals(f.format(t.getAgenda()))){
+                return t;
+            }
+        }
+        return null;
+    }
+
+    public void Enviaragendamento(Webhook web){
+        List<Atendimento> at = atendimentoRepository.ListaAtendimentos(web.getPara());
+        String sms = new String();
+        sms = "Consultas Agendadas ";
+        SimpleDateFormat sdff = new SimpleDateFormat("dd/MM/yyyy");
+        for (Atendimento a :at){
+            Medico m = medicoRepository.MedicoId(a.getId_medico());
+            Agenda ag = agendaRepository.agendado(a.getId_agenda());
+            Hora h = horaRepository.agendado(a.getId_hora());
+
+            sms = sms + "\n Medico: "+m.getMedico() +"\n Dia: "+ sdff.format(ag.getAgenda()) +" Hora: "+h.getHora()+"\n";
+
+        }
+        zapServicel.EnviarSMS(sms, web.getPara(), web.getPara());
+    }
+
+    public void gravarUtimaPergunta(Webhook web, String pergunta, Lista lista) {
+        ultimaPerguntaRepository.deleteById(web.getPara());
+        UtimaPergunta ult = new UtimaPergunta();
+        ult.setNumero(web.getPara());
+        ult.setNumeroenviado(web.getPara());
+        ult.setPergunta(pergunta);
+        zapServicel.EnviarList(lista);
+        ultimaPerguntaRepository.Salvar(ult);
+
+    }
+
+    public void gravarUtimaPerguntaSemEnvio(Webhook web, String pergunta) {
+        ultimaPerguntaRepository.deleteById(web.getPara());
+        UtimaPergunta ult = new UtimaPergunta();
+        ult.setNumero(web.getPara());
+        ult.setNumeroenviado(web.getPara());
+        ult.setPergunta(pergunta);
+        ultimaPerguntaRepository.Salvar(ult);
     }
 
 
@@ -126,7 +332,7 @@ public class WebhookServiceImpl implements WebhookService {
                 if (Objects.isNull(pegunta.getReg())) {
                     Agendar(web, pegunta);
                 } else if (pegunta.getReg().equals("Agenda")) {
-                    Horario(web, pegunta);
+
 
                 } else {
                     Fechar(web, pegunta);
@@ -231,37 +437,12 @@ public class WebhookServiceImpl implements WebhookService {
         atendimentoRepository.Salvar(atend);
     }
 
-    public void Horario(Webhook w, UtimaPergunta u) {
-        List<Hora> hr = HoraDisp(Long.valueOf(w.getBody()));
-        LimparPerguntas(w.getDe());
-        UtimaPergunta ult = new UtimaPergunta();
-        ult.setId_pergunta(u.getId_pergunta());
-        ult.setNumero(w.getPara());
-        ult.setNumeroenviado(w.getDe());
-        ult.setReg("Hora");
-        ult.setAgenda(true);
-        ultimaPerguntaRepository.Salvar(ult);
 
-        String texto = "";
-        if (!hr.isEmpty()) {
-            texto = "Informe apenas o *numero* desejado\n";
-            for (Hora h : hr) {
-                texto = texto + "*" + h.getId() + "* - " + h.getHora() + "\n";
-            }
-        } else {
-            zapServicel.EnviarSMS("*Medico com agenda fechada*, \n selecione outro medico", w.getPara(), w.getDe());
-            LimparPerguntas(w.getDe());
-            return;
-        }
-        zapServicel.EnviarSMS(texto, w.getPara(), w.getDe());
-        atendimentoRepository.UpdateAgenda(Long.valueOf(w.getBody()), w.getDe());
-    }
 
     public void Fechar(Webhook w, UtimaPergunta u) {
         LimparPerguntas(w.getDe());
         SimpleDateFormat sdff = new SimpleDateFormat("dd/MM/yyyy");
-        atendimentoRepository.UpdateHora(Long.valueOf(w.getBody()), w.getDe());
-        horaRepository.Update(Long.valueOf(w.getBody()));
+
         Atendimento at = atendimentoRepository.agendado(w.getDe());
         Hora h = horaRepository.agendado(Long.valueOf(w.getBody()));
         Agenda a = agendaRepository.agendado(at.getId_agenda());

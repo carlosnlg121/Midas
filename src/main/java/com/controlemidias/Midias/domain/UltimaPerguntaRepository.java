@@ -29,8 +29,8 @@ public class UltimaPerguntaRepository {
     public Boolean Salvar(UtimaPergunta utima){
 
         try {
-            db.update("insert into utimapergunta (id_pergunta,numero,numeroenviado,medico,agenda,reg) values(?,?,?,?,?,?)",
-                    new Object[] { utima.getId_pergunta(), utima.getNumero(), utima.getNumeroenviado(),utima.isMedico(),utima.isAgenda(), utima.getReg() });
+            db.update("insert into utimapergunta (id_pergunta,numero,numeroenviado,medico,agenda,reg,pergunta) values(?,?,?,?,?,?,?)",
+                    new Object[] { utima.getId_pergunta(), utima.getNumero(), utima.getNumeroenviado(),utima.isMedico(),utima.isAgenda(), utima.getReg(),utima.getPergunta()});
             return true;
         } catch (IncorrectResultSizeDataAccessException e) {
             return false;

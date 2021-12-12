@@ -12,4 +12,5 @@ public class UtimaPergunta {
     private String reg;
     private boolean medico;
     private boolean agenda;
+    private String pergunta;
 }

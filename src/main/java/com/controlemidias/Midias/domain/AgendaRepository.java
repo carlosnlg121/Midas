@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
 import java.util.List;
 
 @Repository
@@ -32,6 +33,16 @@ public class AgendaRepository {
         try {
             Agenda atendimento = db.queryForObject("select * from  agendas where id = ?",
                     BeanPropertyRowMapper.newInstance(Agenda.class),id);
+            return atendimento;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            return null;
+        }
+    }
+
+    public Agenda dia(String medico, String data){
+        try {
+            Agenda atendimento = db.queryForObject("select * from  agendas where id_medico =? and agenda = '"+data+"'",
+                    BeanPropertyRowMapper.newInstance(Agenda.class),medico);
             return atendimento;
         } catch (IncorrectResultSizeDataAccessException e) {
             return null;

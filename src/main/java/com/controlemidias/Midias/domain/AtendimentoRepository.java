@@ -25,6 +25,17 @@ public class AtendimentoRepository {
         }
     }
 
+    public List<Atendimento> ListaAtendimentos(String id){
+
+        try {
+            List<Atendimento> atendimento = db.query("select * from  atendimento where numerocliente = ?",
+                    BeanPropertyRowMapper.newInstance(Atendimento.class),id);
+            return atendimento;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            return null;
+        }
+    }
+
     public Atendimento agendado(String numero){
         try {
             Atendimento atendimento = db.queryForObject("select * from  atendimento where numerocliente = ?",
@@ -35,12 +46,31 @@ public class AtendimentoRepository {
         }
     }
 
-    public void UpdateHora (long id ,String numero) {
-        db.update("UPDATE atendimento SET id_hora = ?  WHERE numerocliente=?",id, numero);
+    public Atendimento agendadoagenda(String numero){
+        try {
+            Atendimento atendimento = db.queryForObject("select * from  atendimento where id_agenda is null and id_hora is null and numerocliente = ?",
+                    BeanPropertyRowMapper.newInstance(Atendimento.class),numero);
+            return atendimento;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            return null;
+        }
+    }
+    public Atendimento agendadoHora(String numero){
+        try {
+            Atendimento atendimento = db.queryForObject("select * from  atendimento where id_hora is null and numerocliente = ?",
+                    BeanPropertyRowMapper.newInstance(Atendimento.class),numero);
+            return atendimento;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            return null;
+        }
     }
 
-    public void UpdateAgenda (long id ,String numero) {
-        db.update("UPDATE atendimento SET id_agenda = ?  WHERE numerocliente=?",id, numero);
+    public void UpdateAgenda (long id_agenda ,long id ) {
+        db.update("UPDATE atendimento SET id_agenda = ?  WHERE  id = ?",id_agenda, id);
+    }
+
+    public void UpdateHora (long id_agenda ,long id ) {
+        db.update("UPDATE atendimento SET id_hora = ?  WHERE  id = ?",id_agenda, id);
     }
 
     public void deleteById(String id) {
