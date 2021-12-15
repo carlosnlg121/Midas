@@ -24,7 +24,7 @@ public class ZapServiceImpl implements ZapService {
     @Override
     public String EnviarSMS(String menssagem, String numero, String numeroEnvio) {
 
-        String url_dependencia_proprias = "http://18.222.1.102:8000/send-message";
+        String url_dependencia_proprias = "http://3.145.80.78:8000/send-message";
         RestTemplate restTemplate = new RestTemplate();
         Map<String, String> parametros = new HashMap<>();
 
@@ -44,7 +44,7 @@ public class ZapServiceImpl implements ZapService {
     @Override
     public String Enviarbuton(Button button) {
 
-        String url_dependencia_proprias = "http://18.222.1.102:8000/send-buttons";
+        String url_dependencia_proprias = "http://3.145.80.78:8000/send-buttons";
         RestTemplate restTemplate = new RestTemplate();
         Gson gson = new Gson();
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
@@ -64,7 +64,7 @@ public class ZapServiceImpl implements ZapService {
     @Override
     public String EnviarList(Lista list) {
 
-        String url_dependencia_proprias = "http://18.222.1.102:8000/send-lists";
+        String url_dependencia_proprias = "http://3.145.80.78:8000/send-lists";
         RestTemplate restTemplate = new RestTemplate();
         Gson gson = new Gson();
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
