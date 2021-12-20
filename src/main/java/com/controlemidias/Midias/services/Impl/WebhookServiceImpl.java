@@ -47,10 +47,13 @@ public class WebhookServiceImpl implements WebhookService {
         JSONObject root = new JSONObject(user);
         web.setBody(root.getString("body"));
         web.setPara(root.getString("to"));
-        if (!web.getBody().isEmpty()){
-            bot(web);
-            webrepository.Salvar(web);
+        web.setRepondido(retirar(root.getString("from")));
+        if (!web.getRepondido().equals("status")){
+            if (!web.getBody().isEmpty()){
+                bot(web);
+            }
         }
+        webrepository.Salvar(web);
         return web;
     }
 
